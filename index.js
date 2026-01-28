@@ -93,6 +93,7 @@ client.once('ready', async () => {
         console.log('Komutlar yükleniyor...');
         // Yukarıda CONFIG.CLIENT_ID'yi düzeltmeyi unutma!
         // Eğer client.user.id çalışmazsa manuel girmen gerekebilir.
+        rest.setToken(process.env.TOKEN);
         await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
         console.log('Komutlar başarıyla yüklendi!');
     } catch (error) {
