@@ -4,7 +4,6 @@ const axios = require('axios');
 
 // --- AYARLAR (Senin Bilgilerin) ---
 const CONFIG = {
-    TOKEN: process.env.TOKEN,
     FIREBASE_URL: process.env.FIREBASE_URL,
     FIREBASE_SECRET: process.env.FIREBASE_SECRET,
     CLIENT_ID: process.env.CLIENT_ID, // Botunun ID'sini buraya yazmalısın (Tokenin başındaki sayı değil, sağ tık ID kopyala)
@@ -261,4 +260,4 @@ async function handleButton(interaction) {
     }
 }
 
-client.login(CONFIG.TOKEN);
+client.login(process.env.TOKEN);
