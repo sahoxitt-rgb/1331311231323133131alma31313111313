@@ -17,7 +17,7 @@ const CONFIG = {
     
     // YETKİLİ ROLÜ (Ticketları görecek rol ID'si)
     // Buraya sunucundaki "Yetkili" veya "Destek Ekibi" rolünün ID'sini yaz.
-    SUPPORT_ROLE_ID: "BURAYA_YETKILI_ROL_ID_YAZ",
+    SUPPORT_ROLE_ID: "1380526273431994449",
     
     // LİMİTLER
     DEFAULT_PAUSE_LIMIT: 2,
