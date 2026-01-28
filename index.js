@@ -15,8 +15,8 @@ const CONFIG = {
     FIREBASE_SECRET: process.env.FIREBASE_SECRET,
     OWNER_ID: "1380526273431994449", // SENİN ID'N
     
-    // TICKET AYARLARI (Burayı KESİN doldur)
-    TICKET_CATEGORY_ID: "BURAYA_KATEGORI_ID_YAZ", 
+    // YETKİLİ ROLÜ (Ticketları görecek rol ID'si)
+    // Buraya sunucundaki "Yetkili" veya "Destek Ekibi" rolünün ID'sini yaz.
     SUPPORT_ROLE_ID: "BURAYA_YETKILI_ROL_ID_YAZ",
     
     // LİMİTLER
@@ -27,7 +27,7 @@ const CONFIG = {
 };
 
 // =====================================================
-//                 1. WEB SERVER (7/24)
+//                 1. WEB SERVER (7/24 AKTİFLİK İÇİN)
 // =====================================================
 const app = express();
 app.get('/', (req, res) => res.send('FAKE LAG V1 - SYSTEM OPERATIONAL 🟢'));
@@ -44,7 +44,7 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent
     ], 
-    partials: [Partials.Channel] 
+    partials: [Partials.Channel] // DM Kutusunu dinlemek için şart
 });
 
 // =====================================================
@@ -54,10 +54,10 @@ const commands = [
     // --- TICKET KOMUTU ---
     new SlashCommandBuilder()
         .setName('ticket-kur')
-        .setDescription('🎫 (Admin) Gelişmiş ticket panelini kurar.')
+        .setDescription('🎫 (Admin) Ticket panelini OLDUĞUNUZ KANALA kurar.')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
-    // --- MEVCUT LİSANS KOMUTLARI ---
+    // --- LİSANS KOMUTLARI ---
     new SlashCommandBuilder().setName('admin-panel').setDescription('👑 (Admin) Yönetici kontrol merkezi.'),
     new SlashCommandBuilder().setName('vip-ekle').setDescription('💎 (Admin) Kullanıcıya VIP lisans ver ve DM at.').addUserOption(o => o.setName('kullanici').setDescription('Kullanıcı').setRequired(true)).addStringOption(o => o.setName('key_ismi').setDescription('Key Adı').setRequired(true)).addIntegerOption(o => o.setName('gun').setDescription('Süre').setRequired(true)),
     new SlashCommandBuilder().setName('kullanici-ekle').setDescription('🛠️ (Admin) Normal lisans ver ve DM at.').addUserOption(o => o.setName('kullanici').setDescription('Kullanıcı').setRequired(true)).addStringOption(o => o.setName('key_ismi').setDescription('Key Adı').setRequired(true)).addIntegerOption(o => o.setName('gun').setDescription('Süre').setRequired(true)),
@@ -113,6 +113,7 @@ async function getNextTicketNumber() {
     return count;
 }
 
+// PANEL OLUŞTURUCU (DM VE SUNUCU İÇİN ORTAK)
 function createPanelPayload(key, parts) {
     while (parts.length < 8) parts.push("0");
     const isVIP = parts[7] === 'VIP';
@@ -124,6 +125,7 @@ function createPanelPayload(key, parts) {
 
     const embed = new EmbedBuilder()
         .setTitle(`⚙️ LİSANS KONTROL: ${isVIP ? '💎 VIP' : '🛠️ STANDART'}`)
+        .setDescription(`Aşağıdaki butonları kullanarak lisansını yönetebilirsin.`)
         .setColor(isVIP ? 'Gold' : 'Green')
         .addFields(
             { name: '🔑 Lisans Key', value: `\`${key}\``, inline: true },
@@ -132,7 +134,7 @@ function createPanelPayload(key, parts) {
             { name: '⏸️ Kalan Durdurma', value: isVIP ? '∞ (Sınırsız)' : `\`${kalanPause} / ${LIMITS.PAUSE}\``, inline: true },
             { name: '💻 Kalan Reset', value: `\`${kalanReset} / ${LIMITS.RESET}\``, inline: true }
         )
-        .setFooter({ text: 'Fake Lag V1 Security Systems', iconURL: 'https://i.imgur.com/AfFp7pu.png' }); // Placeholder icon
+        .setFooter({ text: 'Fake Lag V1 Security Systems' });
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('toggle').setLabel(durum === 'aktif' ? 'DURDUR' : 'BAŞLAT').setStyle(durum === 'aktif' ? ButtonStyle.Danger : ButtonStyle.Success).setEmoji(durum === 'aktif' ? '🛑' : '▶️').setDisabled(durum === 'aktif' && !isVIP && kalanPause <= 0),
@@ -174,7 +176,7 @@ async function handleCommand(interaction) {
     const { commandName, options, user, guild } = interaction;
     const userId = user.id;
 
-    // --- TICKET KUR (GÜNCELLENDİ: EMOJİLİ) ---
+    // --- TICKET KUR (OTOMATİK KATEGORİLİ) ---
     if (commandName === 'ticket-kur') {
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) 
             return interaction.reply({ content: '⛔ Yetkin yok!', ephemeral: true });
@@ -198,11 +200,12 @@ async function handleCommand(interaction) {
             new ButtonBuilder().setCustomId('create_ticket').setLabel('Destek Talebi Oluştur').setStyle(ButtonStyle.Primary).setEmoji('🎫')
         );
 
+        // Paneli komutun yazıldığı kanala gönder
         await interaction.channel.send({ embeds: [embed], components: [row] });
-        await interaction.reply({ content: '✅ Ticket paneli başarıyla kuruldu!', ephemeral: true });
+        await interaction.reply({ content: '✅ Ticket paneli bu kanala kuruldu!', ephemeral: true });
     }
 
-    // --- MEVCUT LİSANS KOMUTLARI ---
+    // --- LİSANS VE YÖNETİM KOMUTLARI ---
     else if (['vip-ekle', 'kullanici-ekle', 'olustur', 'sil', 'hwid-hak-ekle', 'durdurma-hak-ekle'].includes(commandName)) {
         if (!await checkPermission(userId)) return interaction.reply({ content: '⛔ Yetkin Yok!', ephemeral: true });
         
@@ -232,17 +235,33 @@ async function handleCommand(interaction) {
             return;
         }
 
-        // Kullanıcı Ekleme
+        // KULLANICI / VIP EKLEME (DM ÖZELLİĞİ)
         if (commandName.includes('ekle')) {
             const target = options.getUser('kullanici');
             const key = options.getString('key_ismi').toUpperCase();
             const gun = options.getInteger('gun');
             const isVip = commandName === 'vip-ekle';
             const data = `bos,${gun},aktif,${new Date().toISOString().split('T')[0]},${target.id},0,0,${isVip ? 'VIP' : 'NORMAL'}`;
+            
+            // 1. Veritabanına kaydet
             await firebaseRequest('put', key, data);
+            
+            // 2. Paneli oluştur
             const payload = createPanelPayload(key, data.split(','));
+            
+            // 3. Admin'e cevap ver
             interaction.reply({ content: `✅ **${target.username}** kullanıcısına ${isVip ? '💎 VIP' : '🛠️'} lisans verildi.`, ephemeral: true });
-            try { await target.send({ content: `🎉 **Lisansınız Hazırlandı!**`, embeds: payload.embeds, components: payload.components }); } catch {}
+            
+            // 4. KULLANICIYA DM AT
+            try { 
+                await target.send({ 
+                    content: `🎉 **Merhaba ${target.username}!** Lisansınız tanımlandı.`, 
+                    embeds: payload.embeds, 
+                    components: payload.components 
+                }); 
+            } catch (error) {
+                interaction.followUp({ content: `⚠️ **Uyarı:** Kullanıcının DM kutusu kapalı olduğu için panel gönderilemedi.`, ephemeral: true });
+            }
             return;
         }
 
@@ -286,17 +305,19 @@ async function handleCommand(interaction) {
 async function handleButton(interaction) {
     const { customId, user, guild, channel } = interaction;
 
-    // --- TICKET OLUŞTURMA ---
+    // --- TICKET OLUŞTURMA (OTOMATİK KATEGORİ TESPİTİ) ---
     if (customId === 'create_ticket') {
         await interaction.deferReply({ ephemeral: true });
         
         const ticketNum = await getNextTicketNumber();
-        const channelName = `ticket-${ticketNum}-${user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, ''); // Temiz isim
+        const channelName = `ticket-${ticketNum}-${user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
 
+        // Panel hangi kategorideyse oraya açar (interaction.channel.parentId)
+        // Eğer panel kategori dışındaysa, ticket da kategori dışında açılır (null)
         const ticketChannel = await guild.channels.create({
             name: channelName,
             type: ChannelType.GuildText,
-            parent: CONFIG.TICKET_CATEGORY_ID !== "BURAYA_KATEGORI_ID_YAZ" ? CONFIG.TICKET_CATEGORY_ID : null,
+            parent: interaction.channel.parentId, // <--- OTOMATİK KATEGORİ
             permissionOverwrites: [
                 { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
                 { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
@@ -304,15 +325,14 @@ async function handleButton(interaction) {
             ]
         });
 
-        // TICKET İÇİ EMOJİLİ MESAJ
         const embed = new EmbedBuilder()
             .setTitle(`🎫 DESTEK TALEBİ #${ticketNum}`)
             .setDescription(`
             👋 Merhaba **${user.username}**, hoş geldin!
             
-            1️⃣ **Lütfen sorununuzu veya talebinizi aşağıya detaylıca yazın.**
-            2️⃣ **Yetkililerimiz en kısa sürede sizinle ilgilenecektir.**
-            3️⃣ **Lütfen sabırlı olun ve gereksiz etiket atmayın.**
+            1️⃣ **Lütfen sorununuzu detaylıca yazın.**
+            2️⃣ **Yetkililerimiz kısa sürede ilgilenecektir.**
+            3️⃣ **Gereksiz etiket atmayınız.**
             
             *Yetkili Ekibi*
             `)
@@ -328,7 +348,7 @@ async function handleButton(interaction) {
         await interaction.editReply(`✅ Ticket oluşturuldu: ${ticketChannel}`);
     }
 
-    // --- TICKET KAPATMA (GERİ SAYIMLI) ---
+    // --- TICKET KAPATMA ---
     else if (customId === 'close_ticket') {
         await interaction.reply({ content: '🔴 **Ticket 5 saniye içinde kapatılıyor...**' });
         setTimeout(() => channel.delete().catch(() => {}), 5000);
@@ -407,5 +427,6 @@ async function handleSelectMenu(interaction) {
             interaction.update({ content: '❌ Key bulunamadı.', components: [] });
         }
     }
+}
 
 client.login(process.env.TOKEN);
