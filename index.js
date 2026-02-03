@@ -23,7 +23,7 @@ const CONFIG = {
 
     // 👇 BURALARI KENDİ SUNUCUNA GÖRE DOLDUR 👇
     LOG_CHANNEL_ID: "BURAYA_LOG_KANAL_ID_YAZ",       // Logların düşeceği kanal
-    CUSTOMER_ROLE_ID: "BURAYA_MUSTERI_ROL_ID_YAZ",   // Lisans girince verilecek rol
+    CUSTOMER_ROLE_ID: "1468386031844720856",   // Lisans girince verilecek rol
     
     // LİMİTLER
     DEFAULT_PAUSE_LIMIT: 2,
@@ -460,11 +460,11 @@ async function handleSelectMenu(interaction) {
         const val = interaction.values[0];
         let title = "", priceInfo = "";
         switch(val) {
-            case 'prod_uid': title = "🛡️ PC UID BYPASS"; priceInfo = "**📆 Haftalık:** 600₺\n**🗓️ Aylık:** 1500₺\n\n*Ban riskini ortadan kaldıran özel bypass teknolojisi.*"; break;
-            case 'prod_external': title = "🔮 PC EXTERNAL"; priceInfo = "**📆 Haftalık:** 600₺\n**🗓️ Aylık:** 1500₺\n\n*Oyun dosyalarına müdahale etmeyen güvenli external yazılım.*"; break;
-            case 'prod_modmenu': title = "👑 PC MOD MENÜ"; priceInfo = "**📆 Haftalık:** 700₺\n**🗓️ Aylık:** 2000₺\n\n*Full özellikli, detaylı mod menü.*"; break;
-            case 'prod_fakelag': title = "💨 PC FAKE LAG"; priceInfo = "**📆 Haftalık:** 200₺\n**♾️ SINIRSIZ:** 500₺\n\n*İnternetini kesmeden laglı görünmeni sağlar.*"; break;
-            case 'prod_android': title = "📱 ANDROID FAKE LAG"; priceInfo = "**🗓️ Aylık:** 800₺\n\n*Mobil cihazlar için özel fake lag.*"; break;
+            case 'prod_uid': title = "🛡️ PC UID BYPASS"; priceInfo = "**📆 Haftalık:** 600₺\n**🗓️ Aylık:** 1500₺\n\n*Pcden Girdiginde Mobil Olarak Görünmeni Sağlar.*"; break;
+            case 'prod_external': title = "🔮 PC EXTERNAL"; priceInfo = "**📆 Haftalık:** 600₺\n**🗓️ Aylık:** 1500₺\n\n*Aimbot Head Destekli External.*"; break;
+            case 'prod_modmenu': title = "👑 PC MOD MENÜ"; priceInfo = "**📆 Haftalık:** 700₺\n**🗓️ Aylık:** 2000₺\n\n*Pull Player Destekli Mod Meü.*"; break;
+            case 'prod_fakelag': title = "💨 PC FAKE LAG"; priceInfo = "**📆 Haftalık:** 200₺\n**♾️ SINIRSIZ:** 500₺\n\n*Işınlanmanı Sağlar.*"; break;
+            case 'prod_android': title = "📱 ANDROID FAKE LAG"; priceInfo = "**🗓️ Aylık:** 800₺\n\n*Android'de Işıınlanmanı Sağlar.*"; break;
         }
         const embed = new EmbedBuilder()
             .setTitle(title)
