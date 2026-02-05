@@ -20,61 +20,64 @@ const {
 const express = require('express');
 const axios = require('axios');
 
-// =====================================================
-//                 AYARLAR VE KONFİGÜRASYON
-// =====================================================
+// =============================================================================
+//                             AYARLAR VE KONFİGÜRASYON
+// =============================================================================
+// Bu bölüm botun beynidir. Tüm ayarlar buradan yönetilir.
 const CONFIG = {
+    // Firebase Veritabanı Bağlantıları
     FIREBASE_URL: process.env.FIREBASE_URL, 
     FIREBASE_SECRET: process.env.FIREBASE_SECRET,
     
-    // 🔥 PATRON (SENİN ID)
+    // 🔥 BOT SAHİBİ VE MASTER YETKİLİ (SENİN ID)
     OWNER_ID: "1380526273431994449", 
     
-    // TICKETLARI GÖRECEK ANA YETKİLİ
+    // TICKETLARI GÖRECEK VE YÖNETECEK ANA YETKİLİ ID
     MASTER_VIEW_ID: "1380526273431994449",
     
-    // DESTEK EKİBİ ROL ID
+    // DESTEK EKİBİ ROL ID (Ticket kanalını görebilecek rol)
     SUPPORT_ROLE_ID: "1380526273431994449", 
 
-    // 👇 LOG VE ROL AYARLARI (DOLDURMAYI UNUTMA)
+    // 👇 LOG VE MÜŞTERİ ROLÜ (BURALARI KESİN DOLDUR)
     LOG_CHANNEL_ID: "BURAYA_LOG_KANAL_ID_YAZ",       
     CUSTOMER_ROLE_ID: "BURAYA_MUSTERI_ROL_ID_YAZ",   
     
-    // LİMİTLER
-    DEFAULT_PAUSE_LIMIT: 2,
-    DEFAULT_RESET_LIMIT: 1,
-    VIP_PAUSE_LIMIT: 999,
-    VIP_RESET_LIMIT: 5,
+    // LİSANS SİSTEMİ LİMİTLERİ
+    DEFAULT_PAUSE_LIMIT: 2, // Normal üye kaç kere durdurabilir
+    DEFAULT_RESET_LIMIT: 1, // Normal üye kaç kere HWID sıfırlayabilir
+    VIP_PAUSE_LIMIT: 999,   // VIP üye (Sınırsız)
+    VIP_RESET_LIMIT: 5,     // VIP üye reset hakkı
 
-    // TASARIM RENKLERİ
-    EMBED_COLOR: '#2B2D31', // Koyu Discord Grisi
-    SUCCESS_COLOR: '#57F287', // Yeşil
-    ERROR_COLOR: '#ED4245',   // Kırmızı
-    INFO_COLOR: '#5865F2',    // Mavi
-    GOLD_COLOR: '#F1C40F'     // Altın
+    // TASARIM RENK PALETİ (PREMIUM GÖRÜNÜM)
+    EMBED_COLOR: '#2B2D31', // Koyu Discord Grisi (Ana Tema)
+    SUCCESS_COLOR: '#57F287', // Başarılı İşlem Yeşili
+    ERROR_COLOR: '#ED4245',   // Hata Kırmızısı
+    INFO_COLOR: '#5865F2',    // Bilgi Mavisi
+    GOLD_COLOR: '#F1C40F'     // Premium Altın Sarısı
 };
 
-// GLOBAL DEĞİŞKENLER (RAM ÜZERİNDE)
-let isMaintenanceEnabled = false;
-let loaderStatus = "UNDETECTED 🟢";
+// GLOBAL DEĞİŞKENLER (RAM ÜZERİNDE TUTULAN GEÇİCİ VERİLER)
+let isMaintenanceEnabled = false; // Bakım modu kapalı başlar
+let loaderStatus = "UNDETECTED 🟢"; // Loader durumu varsayılan olarak güvenli
 
-// =====================================================
-//                 1. WEB SERVER (7/24 AKTİFLİK İÇİN)
-// =====================================================
+// =============================================================================
+//                             1. WEB SERVER (7/24 AKTİFLİK)
+// =============================================================================
+// Bu kısım Render gibi platformlarda botun uyumasını engeller.
 const app = express();
 
 app.get('/', (req, res) => {
-    res.send('SAHO CHEATS SYSTEM OPERATIONAL 🟢');
+    res.send('SAHO CHEATS SYSTEM - ALL SYSTEMS OPERATIONAL 🟢');
 });
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-    console.log(`🌍 Web sunucusu ${port} portunda çalışıyor.`);
+    console.log(`🌍 Web sunucusu ${port} portunda başarıyla başlatıldı.`);
 });
 
-// =====================================================
-//                 2. BOT KURULUMU
-// =====================================================
+// =============================================================================
+//                             2. BOT İSTEMCİSİ (CLIENT)
+// =============================================================================
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
@@ -82,26 +85,29 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildVoiceStates
+        GatewayIntentBits.GuildVoiceStates // Seste kaç kişi var saymak için
     ], 
     partials: [Partials.Channel] 
 });
 
-// =====================================================
-//                 3. KOMUT LİSTESİ
-// =====================================================
+// =============================================================================
+//                             3. KOMUT LİSTESİ VE TANIMLAMALAR
+// =============================================================================
 const commands = [
-    // --- VİTRİN KOMUTU (GÜNCELLENDİ) ---
+    // --- VİTRİN KOMUTU (4 RESİMLİ GALERİ MODU) ---
     new SlashCommandBuilder()
         .setName('format')
-        .setDescription('📸 (Admin) Ürün görseli ve fiyat tablosu oluşturur.')
+        .setDescription('📸 (Admin) 4 Fotoğraflı, profesyonel ürün vitrini oluşturur.')
         .addStringOption(o => o.setName('urun').setDescription('Ürün Adı').setRequired(true))
         .addStringOption(o => o.setName('haftalik').setDescription('Haftalık Fiyat').setRequired(true))
         .addStringOption(o => o.setName('aylik').setDescription('Aylık Fiyat').setRequired(true))
-        .addAttachmentOption(o => o.setName('gorsel').setDescription('Ürün Görseli').setRequired(true))
+        .addAttachmentOption(o => o.setName('gorsel1').setDescription('Ana Resim (Zorunlu)').setRequired(true))
+        .addAttachmentOption(o => o.setName('gorsel2').setDescription('Ek Resim 1 (İsteğe bağlı)').setRequired(false))
+        .addAttachmentOption(o => o.setName('gorsel3').setDescription('Ek Resim 2 (İsteğe bağlı)').setRequired(false))
+        .addAttachmentOption(o => o.setName('gorsel4').setDescription('Ek Resim 3 (İsteğe bağlı)').setRequired(false))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
-    // --- YARDIM VE BİLGİ ---
+    // --- YARDIM VE BİLGİ KOMUTLARI ---
     new SlashCommandBuilder()
         .setName('sss')
         .setDescription('❓ Sıkça Sorulan Sorular (Ban riski, ödeme, iade vb.)'),
@@ -110,10 +116,10 @@ const commands = [
         .setName('help')
         .setDescription('📚 Bot kullanım rehberi ve tüm komutlar.'),
 
-    // --- YÖNETİM KOMUTLARI ---
+    // --- YÖNETİM VE DURUM KOMUTLARI ---
     new SlashCommandBuilder()
         .setName('tum-lisanslar')
-        .setDescription('📜 (Admin) Aktif tüm lisansları listeler.')
+        .setDescription('📜 (Admin) Aktif tüm lisansları veritabanından çeker listeler.')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
@@ -130,75 +136,75 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('dm')
-        .setDescription('📨 (Admin) Bot üzerinden DM atar.')
+        .setDescription('📨 (Admin) Bot üzerinden kullanıcıya özel mesaj atar.')
         .addUserOption(o => o.setName('kullanici').setDescription('Kime?').setRequired(true))
-        .addStringOption(o => o.setName('mesaj').setDescription('Ne?').setRequired(true))
+        .addStringOption(o => o.setName('mesaj').setDescription('Ne yazılacak?').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('kick')
-        .setDescription('👢 (Admin) Kickler.')
+        .setDescription('👢 (Admin) Kullanıcıyı sunucudan atar.')
         .addUserOption(o => o.setName('kullanici').setDescription('Kişi').setRequired(true))
         .addStringOption(o => o.setName('sebep').setDescription('Sebep').setRequired(false))
         .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
 
     new SlashCommandBuilder()
         .setName('ticket-kur')
-        .setDescription('🎫 (Admin) Gelişmiş Ticket Panelini Kurar.')
+        .setDescription('🎫 (Admin) Gelişmiş Ticket Panelini (Dikey Butonlu) Kurar.')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('temizle')
         .setDescription('🧹 (Admin) Sohbeti temizler.')
-        .addIntegerOption(o => o.setName('sayi').setDescription('Miktar').setRequired(true))
+        .addIntegerOption(o => o.setName('sayi').setDescription('Silinecek miktar (1-100)').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
     new SlashCommandBuilder()
         .setName('duyuru')
-        .setDescription('📢 (Admin) Duyuru.')
+        .setDescription('📢 (Admin) Özel embed ile duyuru yapar.')
         .addStringOption(o => o.setName('mesaj').setDescription('Mesaj').setRequired(true))
         .addChannelOption(o => o.setName('kanal').setDescription('Kanal').setRequired(false))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('sunucu-bilgi')
-        .setDescription('📊 İstatistikler.'),
+        .setDescription('📊 Sunucu istatistiklerini gösterir.'),
 
     new SlashCommandBuilder()
         .setName('bakim-modu')
-        .setDescription('🔒 (Admin) Bakım modu.')
+        .setDescription('🔒 (Admin) Bakım modunu açar/kapatır (Ticketları kilitler).')
         .addBooleanOption(o => o.setName('durum').setDescription('Açık mı?').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('ban')
-        .setDescription('🔨 (Admin) Ban.')
+        .setDescription('🔨 (Admin) Kullanıcıyı yasaklar.')
         .addUserOption(o => o.setName('kullanici').setDescription('Kişi').setRequired(true))
         .addStringOption(o => o.setName('sebep').setDescription('Sebep').setRequired(false))
         .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
     new SlashCommandBuilder()
         .setName('unban')
-        .setDescription('🔓 (Admin) Unban.')
-        .addStringOption(o => o.setName('id').setDescription('ID').setRequired(true))
+        .setDescription('🔓 (Admin) Kullanıcının yasağını kaldırır.')
+        .addStringOption(o => o.setName('id').setDescription('Kullanıcı ID').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
     new SlashCommandBuilder()
         .setName('karaliste-ekle')
-        .setDescription('⛔ (Admin) Bot Banı.')
+        .setDescription('⛔ (Admin) Kullanıcının botu kullanmasını engeller.')
         .addUserOption(o => o.setName('kullanici').setDescription('Kişi').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('karaliste-cikar')
-        .setDescription('✅ (Admin) Bot Banı Kaldır.')
+        .setDescription('✅ (Admin) Kullanıcının bot engelini kaldırır.')
         .addUserOption(o => o.setName('kullanici').setDescription('Kişi').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     
-    // --- HİLE SİSTEMİ ---
+    // --- HİLE VE MARKET YÖNETİMİ ---
     new SlashCommandBuilder()
         .setName('durum-guncelle')
-        .setDescription('📊 (Admin) Durum tablosu.')
+        .setDescription('📊 (Admin) Ürünlerin durum tablosunu yayınlar.')
         .addStringOption(o => o.setName('urun').setDescription('Hile Seç').setRequired(true)
             .addChoices(
                 { name: 'PC UID Bypass', value: 'PC UID Bypass' }, 
@@ -217,105 +223,119 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('cark-hak-ekle')
-        .setDescription('🎡 (Admin) Hak ver.')
+        .setDescription('🎡 (Admin) Kullanıcıya çark çevirme hakkı verir.')
         .addUserOption(o => o.setName('kullanici').setDescription('Kişi').setRequired(true))
         .addIntegerOption(o => o.setName('adet').setDescription('Adet').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
+    // --- LİSANS İŞLEMLERİ ---
     new SlashCommandBuilder()
         .setName('vip-ekle')
-        .setDescription('💎 (Admin) VIP lisans.')
+        .setDescription('💎 (Admin) VIP lisans tanımlar.')
         .addUserOption(o => o.setName('kullanici').setDescription('Kullanıcı').setRequired(true))
         .addStringOption(o => o.setName('key_ismi').setDescription('Key Adı').setRequired(true))
-        .addIntegerOption(o => o.setName('gun').setDescription('Süre').setRequired(true))
+        .addIntegerOption(o => o.setName('gun').setDescription('Süre (Gün)').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('kullanici-ekle')
-        .setDescription('🛠️ (Admin) Normal lisans.')
+        .setDescription('🛠️ (Admin) Normal lisans tanımlar.')
         .addUserOption(o => o.setName('kullanici').setDescription('Kullanıcı').setRequired(true))
         .addStringOption(o => o.setName('key_ismi').setDescription('Key Adı').setRequired(true))
-        .addIntegerOption(o => o.setName('gun').setDescription('Süre').setRequired(true))
+        .addIntegerOption(o => o.setName('gun').setDescription('Süre (Gün)').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('olustur')
-        .setDescription('🛠️ (Admin) Boş key.')
+        .setDescription('🛠️ (Admin) Boş (sahipsiz) key oluşturur.')
         .addIntegerOption(o => o.setName('gun').setDescription('Süre').setRequired(true))
-        .addStringOption(o => o.setName('isim').setDescription('İsim').setRequired(false))
+        .addStringOption(o => o.setName('isim').setDescription('İsim (Opsiyonel)').setRequired(false))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('sil')
-        .setDescription('🗑️ (Admin) Key sil.')
+        .setDescription('🗑️ (Admin) Veritabanından key siler.')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('hwid-hak-ekle')
-        .setDescription('➕ (Admin) HWID hakkı.')
+        .setDescription('➕ (Admin) Keye HWID reset hakkı ekler.')
         .addIntegerOption(o => o.setName('adet').setDescription('Adet').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     new SlashCommandBuilder()
         .setName('durdurma-hak-ekle')
-        .setDescription('➕ (Admin) Durdurma hakkı.')
+        .setDescription('➕ (Admin) Keye durdurma hakkı ekler.')
         .addIntegerOption(o => o.setName('adet').setDescription('Adet').setRequired(true))
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
-    // --- USER ---
+    // --- KULLANICI KOMUTLARI ---
     new SlashCommandBuilder()
         .setName('lisansim')
-        .setDescription('👤 Lisans durumunu gör.'),
+        .setDescription('👤 Lisans durumunu, kalan süreni ve haklarını gör.'),
     
     new SlashCommandBuilder()
         .setName('cevir')
-        .setDescription('🎡 Şans Çarkı!'),
+        .setDescription('🎡 Şans Çarkı! (Ödül kazanma şansı).'),
     
     new SlashCommandBuilder()
         .setName('cark-oranlar')
-        .setDescription('📊 Çark Oranları.'),
+        .setDescription('📊 Çarkıfelekteki ödüllerin oranlarını gösterir.'),
     
     new SlashCommandBuilder()
         .setName('referans')
-        .setDescription('⭐ Hizmeti puanla.')
+        .setDescription('⭐ Hizmeti puanla ve yorum bırak.')
         .addIntegerOption(o => o.setName('puan').setDescription('Puan (1-5)').setRequired(true).setMinValue(1).setMaxValue(5))
         .addStringOption(o => o.setName('yorum').setDescription('Yorum').setRequired(true)),
 
 ].map(command => command.toJSON());
 
-// =====================================================
-//                 4. YARDIMCI FONKSİYONLAR
-// =====================================================
+// =============================================================================
+//                             4. YARDIMCI FONKSİYONLAR
+// =============================================================================
 
+// Firebase Veritabanı İsteği
 async function firebaseRequest(method, path, data = null) {
     const url = `${CONFIG.FIREBASE_URL}${path}.json?auth=${CONFIG.FIREBASE_SECRET}`;
     try {
         const payload = data ? JSON.stringify(data) : null;
-        const response = await axios({ method, url, data: payload, headers: { 'Content-Type': 'application/json' } });
+        const response = await axios({ 
+            method, 
+            url, 
+            data: payload, 
+            headers: { 'Content-Type': 'application/json' } 
+        });
         return response.data;
-    } catch (error) { return null; }
+    } catch (error) { 
+        console.error("Firebase Hatası:", error);
+        return null; 
+    }
 }
 
+// Kullanıcının Keyini Bulma
 async function findUserKey(discordId) {
     const data = await firebaseRequest('get', '');
     if (!data) return null;
+    
     for (const [key, value] of Object.entries(data)) {
-        if (key.startsWith("_")) continue;
+        if (key.startsWith("_")) continue; // Sistem dosyalarını atla
         if (typeof value === 'string') {
             const parts = value.split(',');
-            // CSV formatı: durum, süre, aktiflik, tarih, DISCORD_ID, pause, reset, tip
+            // CSV: durum, süre, aktiflik, tarih, DISCORD_ID, pause, reset, tip
             if (parts.length > 4 && parts[4] === discordId) return { key, parts };
         }
     }
     return null;
 }
 
+// Yetki Kontrolü
 async function checkPermission(userId) {
     if (userId === CONFIG.OWNER_ID) return true;
     const admins = await firebaseRequest('get', '_ADMINS_');
     return admins && admins[userId];
 }
 
+// Ticket Sayacı
 async function getNextTicketNumber() {
     let count = await firebaseRequest('get', '_TICKET_COUNT');
     if (!count) count = 0;
@@ -324,17 +344,24 @@ async function getNextTicketNumber() {
     return count;
 }
 
+// Log Gönderme
 async function sendLog(guild, content) {
     if (!guild || !CONFIG.LOG_CHANNEL_ID || CONFIG.LOG_CHANNEL_ID === "BURAYA_LOG_KANAL_ID_YAZ") return;
     const channel = guild.channels.cache.get(CONFIG.LOG_CHANNEL_ID);
     if (channel) channel.send({ content: content }).catch(() => {});
 }
 
-// PANEL TASARIMI (RENKLİ VE ŞIK)
+// Lisans Paneli Oluşturma (Görsel ve Butonlar)
 function createPanelPayload(key, parts) {
+    // Eski verileri uyarla
     while (parts.length < 8) parts.push("0");
+    
     const isVIP = parts[7] === 'VIP';
-    const LIMITS = { PAUSE: isVIP ? CONFIG.VIP_PAUSE_LIMIT : CONFIG.DEFAULT_PAUSE_LIMIT, RESET: isVIP ? CONFIG.VIP_RESET_LIMIT : CONFIG.DEFAULT_RESET_LIMIT };
+    const LIMITS = { 
+        PAUSE: isVIP ? CONFIG.VIP_PAUSE_LIMIT : CONFIG.DEFAULT_PAUSE_LIMIT, 
+        RESET: isVIP ? CONFIG.VIP_RESET_LIMIT : CONFIG.DEFAULT_RESET_LIMIT 
+    };
+    
     let [durum, pause, reset] = [parts[2], parseInt(parts[5] || 0), parseInt(parts[6] || 0)];
     
     const kalanPause = Math.max(0, LIMITS.PAUSE - pause);
@@ -342,35 +369,50 @@ function createPanelPayload(key, parts) {
 
     const embed = new EmbedBuilder()
         .setTitle(`⚙️ LİSANS KONTROL: ${isVIP ? '💎 VIP' : '🛠️ STANDART'}`)
-        .setDescription(`Lisans yönetim paneliniz aşağıdadır.`)
+        .setDescription(`Lisans yönetim paneliniz aşağıdadır. Buradan hilenizi yönetebilirsiniz.`)
         .setColor(isVIP ? 'Gold' : CONFIG.EMBED_COLOR)
         .addFields(
             { name: '🔑 Lisans Key', value: `\`${key}\``, inline: true },
             { name: '📡 Durum', value: durum === 'aktif' ? '✅ AKTİF' : '⏸️ DURAKLATILDI', inline: true },
             { name: '\u200B', value: '\u200B', inline: false },
-            { name: '⏸️ Kalan Durdurma', value: isVIP ? '∞' : `\`${kalanPause}\``, inline: true },
-            { name: '💻 Kalan Reset', value: `\`${kalanReset}\``, inline: true }
+            { name: '⏸️ Kalan Durdurma', value: isVIP ? '∞ (Sınırsız)' : `\`${kalanPause} / ${LIMITS.PAUSE}\``, inline: true },
+            { name: '💻 Kalan Reset', value: `\`${kalanReset} / ${LIMITS.RESET}\``, inline: true }
         )
-        .setFooter({ text: 'SAHO CHEATS Security' });
+        .setFooter({ text: 'SAHO CHEATS Security Systems' })
+        .setTimestamp();
 
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('toggle').setLabel(durum === 'aktif' ? 'DURDUR' : 'BAŞLAT').setStyle(durum === 'aktif' ? ButtonStyle.Danger : ButtonStyle.Success).setEmoji(durum === 'aktif' ? '🛑' : '▶️').setDisabled(durum === 'aktif' && !isVIP && kalanPause <= 0),
-        new ButtonBuilder().setCustomId('reset').setLabel('HWID SIFIRLA').setStyle(ButtonStyle.Primary).setEmoji('🔄').setDisabled(kalanReset <= 0)
+        new ButtonBuilder()
+            .setCustomId('toggle')
+            .setLabel(durum === 'aktif' ? 'DURDUR (Pause)' : 'BAŞLAT (Resume)')
+            .setStyle(durum === 'aktif' ? ButtonStyle.Danger : ButtonStyle.Success)
+            .setEmoji(durum === 'aktif' ? '🛑' : '▶️')
+            .setDisabled(durum === 'aktif' && !isVIP && kalanPause <= 0),
+        
+        new ButtonBuilder()
+            .setCustomId('reset')
+            .setLabel('HWID SIFIRLA')
+            .setStyle(ButtonStyle.Primary)
+            .setEmoji('🔄')
+            .setDisabled(kalanReset <= 0)
     );
 
     return { embeds: [embed], components: [row] };
 }
 
-// =====================================================
-//                 5. BOT EVENTS
-// =====================================================
+// =============================================================================
+//                             5. BOT EVENTS (OLAYLAR)
+// =============================================================================
 client.once('ready', async () => {
     console.log(`✅ Bot giriş yaptı: ${client.user.tag}`);
+    console.log('🚀 Sistemler yükleniyor...');
     
     // --- DİNAMİK DURUM DÖNGÜSÜ ---
+    // Botun "Oynuyor" kısmını sürekli değiştirerek canlı tutar.
     let index = 0;
     setInterval(() => {
         let totalVoice = 0;
+        // Tüm sunuculardaki seste olan kişileri say
         client.guilds.cache.forEach(g => totalVoice += g.voiceStates.cache.size);
 
         const activities = [
@@ -383,30 +425,41 @@ client.once('ready', async () => {
 
         client.user.setActivity({ name: activities[index], type: ActivityType.Playing });
         index = (index + 1) % activities.length;
-    }, 5000); 
+    }, 5000); // 5 saniyede bir değiştir
 
-    // LİSANS SÜRE KONTROLÜ (CRON JOB)
+    // --- LİSANS SÜRE KONTROLÜ (CRON JOB) ---
+    // Her saat başı veritabanını tarar ve süresi biten keyleri pasife alır.
     setInterval(async () => {
         const data = await firebaseRequest('get', '');
         if (!data) return;
+        
         const today = new Date();
         for (const [key, value] of Object.entries(data)) {
+            // Sistem verilerini atla
             if (key.startsWith("_") || typeof value !== 'string') continue;
+            
             let parts = value.split(',');
+            // Zaten bitmişse atla
             if (parts[2] === 'bitik') continue;
+            
             const startDate = new Date(parts[3]);
             const expiryDate = new Date(startDate);
+            // Gün sayısını ekle
             expiryDate.setDate(startDate.getDate() + parseInt(parts[1]));
+            
+            // Tarih geçmişse süreyi bitir
             if (today > expiryDate) {
                 parts[2] = 'bitik';
                 await firebaseRequest('put', key, parts.join(','));
+                console.log(`❌ SÜRE DOLDU: ${key}`);
             }
         }
-    }, 3600000);
+    }, 3600000); // 1 Saat (ms cinsinden)
 
+    // --- SLASH KOMUTLARINI YÜKLE ---
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     try { 
-        console.log('🔄 Komutlar güncelleniyor...');
+        console.log('🔄 Komutlar API\'ye gönderiliyor...');
         await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
         console.log('✨ Komutlar başarıyla yüklendi!');
     } catch (e) {
@@ -414,26 +467,31 @@ client.once('ready', async () => {
     }
 });
 
+// --- HOŞ GELDİN MESAJI ---
 client.on('guildMemberAdd', async member => {
+    // "gelen-giden", "kayıt", "chat" gibi kanalları arar
     const channel = member.guild.channels.cache.find(ch => ch.name.includes('gelen') || ch.name.includes('kayıt') || ch.name.includes('chat'));
     if (!channel) return;
+    
     const embed = new EmbedBuilder()
         .setTitle('🚀 SAHO CHEATS AİLESİNE HOŞ GELDİN!')
-        .setDescription(`Selam **${member.user}**! \nSeninle birlikte **${member.guild.memberCount}** kişi olduk.`)
+        .setDescription(`Selam **${member.user}**! \nSeninle birlikte **${member.guild.memberCount}** kişi olduk.\n\nKalitenin ve güvenin tek adresi.`)
         .setColor(CONFIG.EMBED_COLOR)
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
         .setFooter({ text: 'SAHO CHEATS Community' });
+        
     channel.send({ content: `${member.user}`, embeds: [embed] });
 });
 
-// =====================================================
-//                 6. ETKİLEŞİM YÖNETİCİSİ
-// =====================================================
+// =============================================================================
+//                             6. ETKİLEŞİM YÖNETİCİSİ
+// =============================================================================
 client.on('interactionCreate', async interaction => {
     try {
+        // --- KARA LİSTE KONTROLÜ (GLOBAL BAN) ---
         const blacklist = await firebaseRequest('get', '_BLACKLIST_');
         if (blacklist && blacklist[interaction.user.id]) {
-            return interaction.reply({ content: '⛔ **SİSTEM TARAFINDAN ENGELLENDİNİZ.**', ephemeral: true });
+            return interaction.reply({ content: '⛔ **SİSTEM TARAFINDAN ENGELLENDİNİZ.**\nBu botu kullanamazsınız.', ephemeral: true });
         }
         
         if (interaction.isStringSelectMenu()) return handleSelectMenu(interaction);
@@ -442,20 +500,28 @@ client.on('interactionCreate', async interaction => {
     } catch (e) { console.error('Etkileşim Hatası:', e); }
 });
 
-// =====================================================
-//                 7. SLASH KOMUT HANDLER
-// =====================================================
+// =============================================================================
+//                             7. SLASH KOMUT HANDLER
+// =============================================================================
 async function handleCommand(interaction) {
     const { commandName, options, user, guild } = interaction;
 
-    // --- VİTRİN OLUŞTURMA (BUTONSUZ, SADECE GÖRSEL) ---
+    // --- FORMAT (ÜRÜN VİTRİNİ - GALERİ MODU) ---
     if (commandName === 'format') {
         const urun = options.getString('urun');
         const haftalik = options.getString('haftalik');
         const aylik = options.getString('aylik');
-        const gorsel = options.getAttachment('gorsel');
+        
+        // 4 Tane Resim Değişkeni
+        const gorsel1 = options.getAttachment('gorsel1');
+        const gorsel2 = options.getAttachment('gorsel2');
+        const gorsel3 = options.getAttachment('gorsel3');
+        const gorsel4 = options.getAttachment('gorsel4');
 
-        const embed = new EmbedBuilder()
+        const embeds = [];
+
+        // 1. ANA EMBED (Bilgi ve İlk Resim)
+        const mainEmbed = new EmbedBuilder()
             .setTitle(`💎 ${urun} | FİYAT LİSTESİ`)
             .setDescription(`**${urun}** için güncel fiyat listesi ve detaylar aşağıdadır.\n\n` +
                             `🛡️ **Güvenlik:** ${loaderStatus}\n` +
@@ -467,16 +533,23 @@ async function handleCommand(interaction) {
                 { name: '\u200B', value: '\u200B', inline: false }, // Boşluk
                 { name: '🛒 Nasıl Satın Alırım?', value: 'Satın almak için `#ticket-kur` kanalını kullanabilirsiniz.', inline: false }
             )
-            .setImage(gorsel.url)
+            .setImage(gorsel1.url) // İlk resmi buraya koy
             .setFooter({ text: 'SAHO CHEATS Marketplace', iconURL: guild.iconURL() })
             .setTimestamp();
+        
+        embeds.push(mainEmbed);
 
-        // Buton yok, sadece embed
-        await interaction.channel.send({ embeds: [embed] });
-        await interaction.reply({ content: '✅ Ürün vitrini başarıyla oluşturuldu!', ephemeral: true });
+        // 2. EKSTRA RESİMLER (Varsa Embed Olarak Ekle)
+        // Discord'da galeri yapmak için birden fazla embed gönderilir ama sadece URL'leri aynı set edilir (Burada basit yöntem: Alt alta atma)
+        if (gorsel2) embeds.push(new EmbedBuilder().setURL('https://discord.gg/sahocheats').setImage(gorsel2.url).setColor(CONFIG.GOLD_COLOR));
+        if (gorsel3) embeds.push(new EmbedBuilder().setURL('https://discord.gg/sahocheats').setImage(gorsel3.url).setColor(CONFIG.GOLD_COLOR));
+        if (gorsel4) embeds.push(new EmbedBuilder().setURL('https://discord.gg/sahocheats').setImage(gorsel4.url).setColor(CONFIG.GOLD_COLOR));
+
+        await interaction.channel.send({ embeds: embeds });
+        await interaction.reply({ content: '✅ Ürün vitrini (Galeri Modu) başarıyla oluşturuldu!', ephemeral: true });
     }
 
-    // --- SIKÇA SORULAN SORULAR ---
+    // --- SSS (SIKÇA SORULAN SORULAR) ---
     else if (commandName === 'sss') {
         const embed = new EmbedBuilder()
             .setTitle('❓ SIKÇA SORULAN SORULAR')
@@ -511,7 +584,7 @@ async function handleCommand(interaction) {
                 },
                 { 
                     name: '🛡️ **Yetkili Komutları**', 
-                    value: '> `/format` - Ürün vitrini oluşturur (Resimli).\n> `/ticket-kur` - Destek panelini kurar.\n> `/durum-guncelle` - Hile durumunu bildirir.\n> `/loader-durum` - Loader güvenliğini değiştirir.\n> `/dm` - Özel mesaj atar.\n> `/kick`, `/ban`, `/unban` - Ceza sistemi.\n> `/vip-ekle`, `/kullanici-ekle` - Lisans verir.\n> `/tum-lisanslar` - Tüm aktif lisansları görür.' 
+                    value: '> `/format` - Ürün vitrini oluşturur (4 Resimli).\n> `/ticket-kur` - Destek panelini kurar.\n> `/durum-guncelle` - Hile durumunu bildirir.\n> `/loader-durum` - Loader güvenliğini değiştirir.\n> `/dm` - Özel mesaj atar.\n> `/kick`, `/ban`, `/unban` - Ceza sistemi.\n> `/vip-ekle`, `/kullanici-ekle` - Lisans verir.\n> `/tum-lisanslar` - Tüm aktif lisansları görür.' 
                 }
             )
             .setFooter({ text: 'SAHO CHEATS Automation' });
@@ -620,14 +693,24 @@ async function handleCommand(interaction) {
             .setThumbnail('https://cdn-icons-png.flaticon.com/512/4712/4712109.png')
             .setFooter({ text: 'SAHO CHEATS Security Systems' });
 
+        // Butonları dikey sıralamak için her birini ayrı bir ActionRow'a koyuyoruz.
         const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket_buy').setLabel('💳 SATIN ALIM (Fiyatlar)').setStyle(ButtonStyle.Success)
+            new ButtonBuilder()
+                .setCustomId('ticket_buy')
+                .setLabel('💳 SATIN ALIM (Fiyatlar)')
+                .setStyle(ButtonStyle.Success)
         );
         const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket_tech').setLabel('🛠️ TEKNİK DESTEK').setStyle(ButtonStyle.Primary)
+            new ButtonBuilder()
+                .setCustomId('ticket_tech')
+                .setLabel('🛠️ TEKNİK DESTEK')
+                .setStyle(ButtonStyle.Primary)
         );
         const row3 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket_other').setLabel('🤝 DİĞER / ORTAKLIK').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder()
+                .setCustomId('ticket_other')
+                .setLabel('🤝 DİĞER / ORTAKLIK')
+                .setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.channel.send({ embeds: [embed], components: [row1, row2, row3] });
@@ -709,12 +792,14 @@ async function handleCommand(interaction) {
         interaction.reply({ embeds: [embed] }); 
     }
 
-    // --- KARA LİSTE ---
+    // --- KARA LİSTE EKLE ---
     else if (commandName === 'karaliste-ekle') { 
         const target = options.getUser('kullanici'); 
         await firebaseRequest('patch', '_BLACKLIST_', { [target.id]: "BAN" }); 
         interaction.reply({ content: `⛔ **${target.tag}** engellendi.`, ephemeral: true }); 
     }
+
+    // --- KARA LİSTE ÇIKAR ---
     else if (commandName === 'karaliste-cikar') { 
         const target = options.getUser('kullanici'); 
         const url = `${CONFIG.FIREBASE_URL}_BLACKLIST_/${target.id}.json?auth=${CONFIG.FIREBASE_SECRET}`; 
@@ -783,7 +868,7 @@ async function handleCommand(interaction) {
         else interaction.reply({ content: 'Referans kanalı bulunamadı.', ephemeral: true }); 
     }
     
-    // --- ÇARKIFELEK ---
+    // --- ÇARKIFELEK (SPIN) ---
     else if (commandName === 'cevir') {
         await interaction.deferReply();
         let extraRights = await firebaseRequest('get', `_SPIN_RIGHTS_/${user.id}`);
@@ -797,7 +882,7 @@ async function handleCommand(interaction) {
         } else {
             const spinData = await firebaseRequest('get', `_SPIN_TIMES_/${user.id}`);
             const now = Date.now();
-            const cooldown = 24 * 60 * 60 * 1000;
+            const cooldown = 24 * 60 * 60 * 1000; // 24 Saat
             if (spinData) {
                 const lastSpin = parseInt(spinData);
                 if (now - lastSpin < cooldown) return interaction.editReply(`⏳ **Günlük hakkın doldu!**\nTekrar denemek için: <t:${Math.floor((lastSpin + cooldown) / 1000)}:R>`);
@@ -846,7 +931,7 @@ async function handleCommand(interaction) {
         await interaction.editReply({ embeds: [embed] }); 
     }
 
-    // --- LİSANS YÖNETİMİ ---
+    // --- LİSANS YÖNETİMİ (VIP/NORMAL/SİLME) ---
     else if (['vip-ekle', 'kullanici-ekle', 'olustur', 'sil', 'hwid-hak-ekle', 'durdurma-hak-ekle'].includes(commandName)) {
         // HWID HAK EKLE
         if (commandName === 'hwid-hak-ekle' || commandName === 'durdurma-hak-ekle') { 
@@ -912,15 +997,18 @@ async function handleCommand(interaction) {
     }
 }
 
-// =====================================================
-//                 8. BUTON HANDLER (GELİŞMİŞ TICKET)
-// =====================================================
+// =============================================================================
+//                             8. BUTON HANDLER (GELİŞMİŞ TICKET)
+// =============================================================================
 async function handleButton(interaction) {
     const { customId, user, guild, channel } = interaction;
 
     // --- TICKET AÇMA ---
     if (customId.startsWith('ticket_')) {
-        if (isMaintenanceEnabled && !await checkPermission(user.id)) return interaction.reply({ content: '🔒 Bakımdayız.', ephemeral: true });
+        // Bakım modu kontrolü
+        if (isMaintenanceEnabled && !await checkPermission(user.id)) {
+            return interaction.reply({ content: '🔒 **SİSTEM BAKIMDA**\nŞu anda yeni destek talebi oluşturamazsınız.', ephemeral: true });
+        }
 
         await interaction.deferReply({ ephemeral: true });
         const type = customId.split('_')[1];
@@ -987,7 +1075,7 @@ async function handleButton(interaction) {
         channel.send({ embeds: [new EmbedBuilder().setDescription(`✅ Bu talep **${user}** tarafından devralındı.`).setColor(CONFIG.SUCCESS_COLOR)] });
     }
 
-    // --- LİSANS İŞLEMLERİ ---
+    // --- LİSANS İŞLEMLERİ (DURDUR / SIFIRLA) ---
     if (['toggle', 'reset'].includes(customId)) {
         await interaction.deferReply({ ephemeral: true });
         const result = await findUserKey(user.id);
@@ -1017,12 +1105,12 @@ async function handleButton(interaction) {
     }
 }
 
-// =====================================================
-//                 9. SELECT MENU HANDLER
-// =====================================================
+// =============================================================================
+//                             9. SELECT MENU HANDLER
+// =============================================================================
 async function handleSelectMenu(interaction) {
     
-    // --- SIKÇA SORULAN SORULAR ---
+    // --- SSS (SIKÇA SORULAN SORULAR) ---
     if (interaction.customId === 'faq_select') {
         const val = interaction.values[0];
         let title, desc;
@@ -1062,7 +1150,7 @@ async function handleSelectMenu(interaction) {
         return;
     }
 
-    // --- LİSANS MENÜLERİ (SİL / HAK EKLE) ---
+    // --- LİSANS İŞLEMLERİ (SİLME / HAK EKLEME) ---
     if (interaction.customId === 'delete_key' || interaction.customId.startsWith('add_right_')) {
         if (!await checkPermission(interaction.user.id)) return interaction.reply({ content: '⛔ Yetkisiz.', ephemeral: true });
         
@@ -1095,11 +1183,12 @@ async function handleSelectMenu(interaction) {
     }
 }
 
-// =====================================================
-//                 CRASH KORUMASI
-// =====================================================
+// =============================================================================
+//                             10. CRASH ENGELLEYİCİ (ANTI-CRASH)
+// =============================================================================
 process.on('unhandledRejection', error => { 
     console.error('Beklenmeyen Hata:', error); 
+    // Botun çökmesini engeller
 });
 
 client.login(process.env.TOKEN);
