@@ -18,6 +18,13 @@ const {
     ActivityType,
     AttachmentBuilder
 } = require('discord.js');
+
+// =============================================================================
+//  YENİ EKLENEN KÜTÜPHANE (SES İÇİN)
+//  Bunu kullanmak için terminale: npm install @discordjs/voice yazmalısın.
+// =============================================================================
+const { joinVoiceChannel, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
+
 const express = require('express');
 const axios = require('axios');
 
@@ -42,11 +49,15 @@ const CONFIG = {
 
     // ------------------- KANALLAR VE ROLLER -------------------
     // 👇 LOG KANALINI KESİN DOLDUR (Satın alım yönlendirmesi için önemli)
-    LOG_CHANNEL_ID: "1469080536659001568",       
+    LOG_CHANNEL_ID: "BURAYA_LOG_KANAL_ID_YAZ",       
     
     // MÜŞTERİ ROLÜ (Satın alanlara verilecek rol - Opsiyonel)
-    CUSTOMER_ROLE_ID: "BURAYA_MUSTERI_ROL_ID_YAZ",   
+    CUSTOMER_ROLE_ID: "BURAYA_MUSTERI_ROL_ID_YAZ",    
     
+    // ------------------- 7/24 SES AYARLARI (YENİ) -------------------
+    VOICE_GUILD_ID: "1446824586808262709",    // Senin verdiğin Sunucu ID
+    VOICE_CHANNEL_ID: "1465453822204969154",  // Senin verdiğin Ses Kanalı ID
+
     // ------------------- LİSANS SİSTEMİ LİMİTLERİ -------------------
     DEFAULT_PAUSE_LIMIT: 2, // Normal üye kaç kere durdurabilir
     DEFAULT_RESET_LIMIT: 1, // Normal üye kaç kere HWID sıfırlayabilir
@@ -433,6 +444,9 @@ client.once('ready', async () => {
     console.log(`🆔 BOT ID: ${client.user.id}`);
     console.log(`=============================================\n`);
     
+    // 🔥🔥🔥 YENİ EKLENEN: 7/24 SES BAĞLANTISI BAŞLAT 🔥🔥🔥
+    connectToVoice();
+
     // --- DİNAMİK DURUM DÖNGÜSÜ (HAREKETLİ PRESENCE) ---
     let index = 0;
     setInterval(() => {
@@ -484,6 +498,49 @@ client.once('ready', async () => {
         console.log('✨ Komutlar başarıyla yüklendi!');
     } catch (e) { console.error('Komut hatası:', e); }
 });
+
+// 🔥🔥🔥 YENİ EKLENEN: SES BAĞLANTI FONKSİYONU 🔥🔥🔥
+// Bu fonksiyon botu sese sokar, atılırsa geri sokar, sağır/sustur yapar.
+async function connectToVoice() {
+    const guild = client.guilds.cache.get(CONFIG.VOICE_GUILD_ID);
+    if (!guild) return console.log("❌ [SES] Hedef sunucu bulunamadı! ID kontrol et.");
+
+    const channel = guild.channels.cache.get(CONFIG.VOICE_CHANNEL_ID);
+    if (!channel) return console.log("❌ [SES] Hedef ses kanalı bulunamadı! ID kontrol et.");
+
+    try {
+        const connection = joinVoiceChannel({
+            channelId: channel.id,
+            guildId: guild.id,
+            adapterCreator: guild.voiceAdapterCreator,
+            selfDeaf: true,  // Kulaklık kapalı (sağır)
+            selfMute: true   // Mikrofon kapalı (sustur)
+        });
+
+        console.log(`🔊 [SES] ${channel.name} kanalına bağlanıldı!`);
+
+        // Bağlantı koparsa (Kick, Sunucu gitmesi vb.) anında tekrar dene
+        connection.on(VoiceConnectionStatus.Disconnected, async () => {
+            console.log("⚠️ [SES] Bağlantı koptu! Tekrar bağlanılıyor...");
+            try {
+                // Küçük bir bekleme yapıp tekrar bağlanmayı dener (spam koruması için)
+                await Promise.race([
+                    entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+                    entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+                ]);
+            } catch (error) {
+                // Eğer hızlıca toparlayamazsa bağlantıyı sıfırdan kur
+                connection.destroy();
+                connectToVoice();
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ [SES HATASI]:", error);
+        // Hata olursa 5 saniye sonra tekrar dene
+        setTimeout(connectToVoice, 5000);
+    }
+}
 
 // --- HOŞ GELDİN MESAJI ---
 client.on('guildMemberAdd', async member => {
